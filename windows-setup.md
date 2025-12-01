@@ -2,6 +2,16 @@
 
 Este documento explica cómo configurar Clipboard Manager para que se ejecute automáticamente en segundo plano en Windows.
 
+## Icono de la aplicación
+
+La aplicación incluye un icono en `assets/icon.png` y `assets/icon.svg`. Este icono se muestra:
+- En la bandeja del sistema (system tray)
+- En Windows, en la barra de tareas
+
+Si necesitas un archivo `.ico` para Windows, puedes convertir el SVG/PNG usando herramientas online como:
+- https://convertio.co/es/png-ico/
+- https://cloudconvert.com/png-to-ico
+
 ## Opción 1: Ejecutar al inicio con Task Scheduler (Recomendado)
 
 ### Usando la interfaz gráfica:

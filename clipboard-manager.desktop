@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Clipboard Manager
+Comment=Gestor de portapapeles con sincronización P2P
+Exec=/usr/bin/npm start
+Path=/home/poetauv/workspace/clipboard-manager
+Terminal=false
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
+Hidden=false

@@ -1,5 +1,6 @@
 const { app, BrowserWindow, globalShortcut, ipcMain, Notification, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 const ConfigManager = require('./modules/config');
 const ClipboardManager = require('./modules/clipboardManager');
@@ -322,6 +323,9 @@ app.whenReady().then(() => {
   initialize();
   createTray();
   registerGlobalShortcut();
+  
+  // No abrir ventana al inicio, solo en background
+  // La ventana se abrirá con el atajo global o click en tray
 });
 
 app.on('window-all-closed', () => {
@@ -330,7 +334,8 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  // En macOS, re-crear ventana al hacer click en el dock si no hay ventanas
+  if (process.platform === 'darwin' && !mainWindow) {
     createWindow();
   }
 });

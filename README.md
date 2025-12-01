@@ -8,58 +8,99 @@ Gestor de portapapeles multiplataforma (Windows + Linux) con sincronización P2P
 - 📋 Historial de portapapeles configurable (texto e imágenes)
 - ⌨️ Atajo global para abrir ventana flotante (Ctrl+Alt+V / Cmd+Alt+V)
 - 🔒 Comunicación segura con autenticación HMAC
-- 🖼️ Soporte para texto e imágenes
+- 🖼️ Soporte para texto e imágenes (hasta 10 MB por defecto)
 - 🌐 Comunicación P2P sin servidor central
+- 🗑️ Eliminación individual de elementos del historial
+- 🎯 Ejecución en segundo plano con icono en bandeja del sistema
+- 🚀 Inicio automático con el sistema (Linux/Windows)
 - 🎯 Icono en bandeja del sistema (system tray)
 - 🗑️ Eliminación individual de elementos del historial
 - 🚀 Ejecución en segundo plano como servicio
 
 ## Instalación
 
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/Pastranauwu/Clipboard-async.git
+cd Clipboard-async
+```
+
+### 2. Instalar dependencias
+
 ```bash
 npm install
 ```
 
-## Uso
+### 3. Configuración inicial
+
+La aplicación genera automáticamente la configuración en la primera ejecución en:
+- **Linux**: `~/.config/clipboard-manager/config.json`
+- **Windows**: `%APPDATA%/clipboard-manager/config.json`
+
+### 4. Iniciar la aplicación
 
 ```bash
 npm start
 ```
 
-La aplicación se ejecutará en segundo plano con un icono en la bandeja del sistema. Usa el atajo global `Ctrl+Alt+V` para abrir la ventana flotante.
+La aplicación se ejecutará en segundo plano con un icono en la bandeja del sistema.
 
-### Configuración como servicio
+## Configuración de sincronización
 
-#### Linux (systemd)
+Para sincronizar entre dispositivos, necesitas configurar los peers de Tailscale:
 
-Para configurar la aplicación como servicio de usuario en Linux:
+### 1. Obtener IP de Tailscale
 
+En cada dispositivo ejecuta:
 ```bash
-# Instalar como servicio
-./install-service.sh
-
-# El servicio se iniciará automáticamente con tu sesión
-# Para habilitarlo al inicio del sistema (incluso sin login):
-loginctl enable-linger $USER
+tailscale ip -4
 ```
 
-Comandos útiles:
-```bash
-# Ver estado
-systemctl --user status clipboard-manager@$USER.service
+Ejemplo: `100.88.127.73`
 
-# Ver logs en tiempo real
-journalctl --user -u clipboard-manager@$USER.service -f
+### 2. Configurar peers
 
-# Reiniciar
-systemctl --user restart clipboard-manager@$USER.service
+Edita el archivo de configuración (`~/.config/clipboard-manager/config.json` en Linux o `%APPDATA%/clipboard-manager/config.json` en Windows):
 
-# Detener
-systemctl --user stop clipboard-manager@$USER.service
-
-# Desinstalar
-./uninstall-service.sh
+```json
+{
+  "sync": {
+    "enabled": true,
+    "sharedSecret": "tu-secret-aqui",
+    "peers": [
+      { "ip": "100.88.127.XX", "name": "Dispositivo 1" },
+      { "ip": "100.112.133.XX", "name": "Dispositivo 2" }
+    ]
+  }
+}
 ```
+
+**IMPORTANTE:** Todos los dispositivos deben tener el **mismo `sharedSecret`**. Copia el valor generado automáticamente en el primer dispositivo y úsalo en todos los demás.
+
+### 3. Reiniciar la aplicación
+
+Después de configurar los peers, reinicia la aplicación para aplicar los cambios.
+
+### Configuración para inicio automático
+
+#### Linux (Autostart)
+
+Para que la aplicación inicie automáticamente con tu sesión:
+
+```bash
+# Instalar en autostart
+./install-autostart.sh
+```
+
+La aplicación se iniciará automáticamente en el próximo login.
+
+**Desinstalar:**
+```bash
+rm ~/.config/autostart/clipboard-manager.desktop
+```
+
+**Nota:** También están disponibles los scripts `install-service.sh` y `uninstall-service.sh` para systemd, pero el método de autostart es más compatible con aplicaciones Electron
 
 #### Windows
 
@@ -105,3 +146,20 @@ Puede cambiarse en la configuración con formato Electron Accelerator.
 - Node.js 18+
 - Electron 28+
 - Tailscale instalado y configurado
+
+## Notas
+
+### Warnings de GPU/Vulkan
+Es normal ver warnings como:
+```
+ERROR:gl_surface_presentation_helper.cc
+Failed to detect any valid GPUs in the current config
+```
+
+Estos son warnings de Electron relacionados con la aceleración por hardware y **no afectan la funcionalidad** de la aplicación. La aplicación funciona correctamente sin GPU/Vulkan.
+
+Para reducir estos warnings (opcional):
+```bash
+# Iniciar con software rendering
+npm start -- --disable-gpu
+```

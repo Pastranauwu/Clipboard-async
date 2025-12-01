@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "clipboard": {
+    "historySize": 10,
+    "pollInterval": 500,
+    "maxImageSize": 10485760,
+    "enableImages": true
+  },
+  "sync": {
+    "enabled": true,
+    "port": 8900,
+    "sharedSecret": "",
+    "peers": [],
+    "autoConnect": true
+  },
+  "ui": {
+    "globalShortcut": "CommandOrControl+Alt+V",
+    "theme": "dark",
+    "showNotifications": true
+  },
+  "security": {
+    "tokenExpiry": 60000,
+    "requireAuth": true
+  }
+}
