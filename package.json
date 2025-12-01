@@ -1,0 +1,25 @@
+{
+  "name": "clipboard-manager",
+  "version": "1.0.0",
+  "description": "Multiplataforma clipboard manager con sincronización P2P via Tailscale",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enable-logging"
+  },
+  "keywords": [
+    "clipboard",
+    "sync",
+    "tailscale",
+    "electron"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0"
+  },
+  "dependencies": {
+    "uuid": "^9.0.1",
+    "ws": "^8.14.2"
+  }
+}
