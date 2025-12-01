@@ -25,6 +25,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Actualizar configuración
   updateConfig: (path, value) => ipcRenderer.invoke('update-config', path, value),
   
+  // Actualizar lista de peers
+  updatePeers: (peers) => ipcRenderer.invoke('update-peers', peers),
+
+  // Agregar nuevo peer
+  addPeer: (data) => ipcRenderer.invoke('add-peer', data),
+
+  // Eliminar peer
+  removePeer: (ip) => ipcRenderer.invoke('remove-peer', ip),
+
   // Cerrar ventana
   closeWindow: () => ipcRenderer.invoke('close-window'),
   
@@ -35,6 +44,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onHistoryUpdated: (callback) => {
     ipcRenderer.on('history-updated', (event, history) => callback(history));
   },
+
+  // Escuchar actualizaciones de configuración
+  onConfigUpdate: (callback) => ipcRenderer.on('config-update', (_event, value) => callback(value)),
   
   // Remover listener de historial
   removeHistoryListener: () => {

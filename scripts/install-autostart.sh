@@ -24,8 +24,10 @@ Name=Clipboard Manager
 Comment=Gestor de portapapeles con sincronización P2P
 Exec=/usr/bin/npm start
 Path=$SCRIPT_DIR
+Icon=$SCRIPT_DIR/assets/icon.png
 Terminal=false
 StartupNotify=false
+StartupWMClass=clipboard-manager
 X-GNOME-Autostart-enabled=true
 Hidden=false
 EOF

@@ -64,6 +64,16 @@ class ConfigManager {
       const data = fs.readFileSync(this.configPath, 'utf8');
       this.config = JSON.parse(data);
 
+      // Migración automática: Si peers es array de strings, convertir a objetos
+      if (this.config.sync && this.config.sync.peers && this.config.sync.peers.length > 0 && typeof this.config.sync.peers[0] === 'string') {
+        this.config.sync.peers = this.config.sync.peers.map(ip => ({ 
+            ip, 
+            name: 'Unknown', 
+            enabled: true 
+        }));
+        this.saveConfig(); // Guardar formato nuevo inmediatamente
+      }
+
       // Validar la configuración
       if (!this.validateConfig(this.config)) {
         console.warn('Invalid config detected, using defaults');

@@ -30,5 +30,6 @@ Thumbs.db
 *.log
 logs/
 
+release/
 # Package lock (opcional, algunos proyectos lo incluyen)
 # package-lock.json

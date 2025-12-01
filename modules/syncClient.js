@@ -17,15 +17,46 @@ class SyncClient extends EventEmitter {
   /**
    * Conecta a todos los peers configurados
    */
-  connectToPeers() {
+  async connectToPeers() {
     if (!this.config.sync.enabled || !this.config.sync.autoConnect) {
       console.log('Sync disabled or autoConnect off');
       return;
     }
 
+    // Intentar descubrir peers de Tailscale
+    try {
+      const tailscalePeers = await this.getTailscalePeers();
+      if (tailscalePeers.length > 0) {
+        console.log(`Found ${tailscalePeers.length} Tailscale peers`);
+        
+        let configChanged = false;
+        // Usar la referencia directa a la configuración para poder guardar
+        const currentPeers = this.config.sync.peers;
+
+        tailscalePeers.forEach(tp => {
+          // Agregar si no existe ya
+          if (!currentPeers.find(p => p.ip === tp.ip)) {
+            currentPeers.push(tp);
+            configChanged = true;
+            console.log(`New Tailscale peer detected: ${tp.name} (${tp.ip})`);
+          }
+        });
+
+        // Si hubo nuevos peers, guardar en config.json
+        if (configChanged) {
+          this.configManager.updateConfig('sync.peers', currentPeers);
+          console.log('Configuration updated with new peers');
+        }
+      }
+    } catch (err) {
+      console.warn('Tailscale discovery failed:', err.message);
+    }
+
+    // Usar la lista actualizada de la configuración
     const peers = this.config.sync.peers;
-    if (!peers || peers.length === 0) {
-      console.log('No peers configured');
+
+    if (peers.length === 0) {
+      console.log('No peers configured or found');
       return;
     }
 
@@ -36,66 +67,133 @@ class SyncClient extends EventEmitter {
   }
 
   /**
-   * Conecta a un peer específico
+   * Obtiene peers desde Tailscale CLI
    */
-  connectToPeer(peerIP, peerName = 'Unknown') {
+  async getTailscalePeers() {
+    try {
+      const { stdout } = await execAsync('tailscale status --json');
+      const status = JSON.parse(stdout);
+      const peers = [];
+      
+      if (status.Peer) {
+        Object.values(status.Peer).forEach(peer => {
+          // Solo peers online y con IP válida
+          if (peer.Online && peer.TailscaleIPs && peer.TailscaleIPs.length > 0) {
+            peers.push({
+              ip: peer.TailscaleIPs[0],
+              name: peer.HostName
+            });
+          }
+        });
+      }
+      return peers;
+    } catch (error) {
+      // Silencioso si no está instalado o falla
+      return [];
+    }
+  }
+
+  /**
+   * Conecta a un peer específico con reintentos
+   */
+  async connectToPeer(peerIP, peerName = 'Unknown', retries = 3) {
     // Evitar conexiones duplicadas
     if (this.connections.has(peerIP)) {
       console.log(`Already connected to ${peerIP}`);
       return;
     }
 
-    const port = this.config.sync.port;
-    const url = `ws://${peerIP}:${port}`;
-
-    console.log(`Connecting to ${peerName} (${peerIP})...`);
-
-    try {
-      // Generar token de autenticación
-      const timestamp = Date.now();
-      const token = this.configManager.generateToken(timestamp);
-
-      const ws = new WebSocket(url, {
-        headers: {
-          'X-Auth-Token': token,
-          'X-Timestamp': timestamp.toString()
-        },
-        maxPayload: 100 * 1024 * 1024 // 100 MB para imágenes grandes
-      });
-
-      // Timeout de conexión
-      const connectionTimeout = setTimeout(() => {
-        if (ws.readyState !== WebSocket.OPEN) {
-          console.warn(`Connection timeout for ${peerIP}`);
-          ws.terminate();
+    // Intentar conexión con reintentos inmediatos
+    for (let i = 0; i < retries; i++) {
+      try {
+        await this._connect(peerIP, peerName);
+        return; // Éxito
+      } catch (err) {
+        console.warn(`Connection attempt ${i + 1}/${retries} failed for ${peerIP}: ${err.message}`);
+        if (i === retries - 1) {
+          // Si fallaron todos los intentos inmediatos, programar reconexión lenta
+          console.error(`All immediate connection attempts failed for ${peerIP}`);
+          this.scheduleReconnect(peerIP, peerName);
+        } else {
+          // Esperar antes del siguiente intento inmediato
+          await new Promise(r => setTimeout(r, 1000 * (i + 1)));
         }
-      }, 10000); // 10 segundos
-
-      ws.on('open', () => {
-        clearTimeout(connectionTimeout);
-        this.handleConnectionOpen(ws, peerIP, peerName);
-      });
-
-      ws.on('message', (data) => {
-        this.handleMessage(data, peerIP);
-      });
-
-      ws.on('close', (code, reason) => {
-        this.handleConnectionClose(peerIP, peerName, code, reason);
-      });
-
-      ws.on('error', (error) => {
-        clearTimeout(connectionTimeout);
-        this.handleConnectionError(peerIP, peerName, error);
-      });
-
-      // Guardar conexión temporalmente
-      this.connections.set(peerIP, ws);
-
-    } catch (error) {
-      console.error(`Failed to connect to ${peerIP}:`, error);
-      this.scheduleReconnect(peerIP, peerName);
+      }
     }
+  }
+
+  /**
+   * Promesa interna para establecer conexión
+   */
+  _connect(peerIP, peerName) {
+    return new Promise((resolve, reject) => {
+      const port = this.config.sync.port;
+      const url = `ws://${peerIP}:${port}`;
+
+      console.log(`Connecting to ${peerName} (${peerIP})...`);
+
+      try {
+        const timestamp = Date.now();
+        const token = this.configManager.generateToken(timestamp);
+
+        const ws = new WebSocket(url, {
+          headers: {
+            'X-Auth-Token': token,
+            'X-Timestamp': timestamp.toString()
+          },
+          maxPayload: 100 * 1024 * 1024
+        });
+
+        // Timeout de conexión
+        const connectionTimeout = setTimeout(() => {
+          if (ws.readyState !== WebSocket.OPEN) {
+            ws.terminate();
+            reject(new Error('Connection timeout'));
+          }
+        }, 5000);
+
+        // Handlers temporales para la promesa
+        const onOpen = () => {
+          clearTimeout(connectionTimeout);
+          cleanup();
+          this.handleConnectionOpen(ws, peerIP, peerName);
+          
+          // Re-asignar handlers permanentes
+          ws.on('message', (data) => this.handleMessage(data, peerIP));
+          ws.on('close', (code, reason) => this.handleConnectionClose(peerIP, peerName, code, reason));
+          ws.on('error', (error) => this.handleConnectionError(peerIP, peerName, error));
+          
+          // Guardar conexión
+          this.connections.set(peerIP, ws);
+          resolve(ws);
+        };
+
+        const onError = (error) => {
+          clearTimeout(connectionTimeout);
+          cleanup();
+          reject(error);
+        };
+
+        const onClose = (code, reason) => {
+          clearTimeout(connectionTimeout);
+          cleanup();
+          reject(new Error(`Closed immediately: ${code} ${reason}`));
+        };
+
+        const cleanup = () => {
+          ws.removeListener('open', onOpen);
+          ws.removeListener('error', onError);
+          ws.removeListener('close', onClose);
+        };
+
+        ws.on('open', onOpen);
+        ws.on('error', onError);
+        ws.on('close', onClose);
+
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   /**

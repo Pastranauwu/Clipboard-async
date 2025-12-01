@@ -178,34 +178,34 @@ class ClipboardManager extends EventEmitter {
     
     if (image.isEmpty()) return;
 
-    // Convertir a PNG
-    const pngBuffer = image.toPNG();
-    const contentHash = this.calculateHash(pngBuffer);
+    // Convertir a JPEG con compresión (calidad 70%)
+    const jpegBuffer = image.toJPEG(70);
+    const contentHash = this.calculateHash(jpegBuffer);
 
     if (contentHash === this.lastContentHash) return;
 
     this.lastContentHash = contentHash;
 
     // Verificar tamaño
-    if (pngBuffer.length > this.config.clipboard.maxImageSize) {
-      console.warn(`Image too large: ${pngBuffer.length} bytes, max: ${this.config.clipboard.maxImageSize}`);
-      this.emit('image-too-large', pngBuffer.length);
+    if (jpegBuffer.length > this.config.clipboard.maxImageSize) {
+      console.warn(`Image too large: ${jpegBuffer.length} bytes, max: ${this.config.clipboard.maxImageSize}`);
+      this.emit('image-too-large', jpegBuffer.length);
       return;
     }
 
     // Convertir a base64
-    const base64 = pngBuffer.toString('base64');
-    const dataURL = `data:image/png;base64,${base64}`;
+    const base64 = jpegBuffer.toString('base64');
+    const dataURL = `data:image/jpeg;base64,${base64}`;
 
     const dimensions = image.getSize();
 
     const item = {
       id: uuidv4(),
       type: 'image',
-      mimeType: 'image/png',
+      mimeType: 'image/jpeg',
       data: dataURL,
       contentHash: contentHash,
-      sizeBytes: pngBuffer.length,
+      sizeBytes: jpegBuffer.length,
       width: dimensions.width,
       height: dimensions.height,
       timestamp: Date.now(),

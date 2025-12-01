@@ -322,6 +322,86 @@ ipcMain.handle('update-config', async (event, path, value) => {
   return true;
 });
 
+ipcMain.handle('update-peers', async (event, peers) => {
+  const config = configManager.getConfig();
+  config.sync.peers = peers;
+  configManager.saveConfig();
+  
+  // Actualizar conexiones en tiempo real
+  if (syncClient) {
+      // Desconectar peers deshabilitados
+      peers.forEach(p => {
+          if (!p.enabled) {
+              syncClient.disconnectFromPeer(p.ip);
+          } else {
+              // Intentar conectar si está habilitado y no conectado
+              syncClient.connectToPeer(p.ip, p.name || 'Manual');
+          }
+      });
+  }
+  return true;
+});
+
+ipcMain.handle('add-peer', async (event, { ip, name }) => {
+  const config = configManager.getConfig();
+  
+  // Asegurar que existe el array
+  if (!config.sync.peers) config.sync.peers = [];
+
+  // Verificar duplicados
+  const exists = config.sync.peers.find(p => p.ip === ip);
+  if (exists) return false;
+
+  // Agregar nuevo peer
+  config.sync.peers.push({
+      ip: ip,
+      name: name || 'Manual',
+      enabled: true
+  });
+
+  // Guardar configuración
+  configManager.saveConfig();
+  
+  // Intentar conectar inmediatamente
+  if (syncClient) {
+      syncClient.connectToPeer(ip, name || 'Manual');
+  }
+
+  // Enviar actualización a la UI para que aparezca en la lista
+  if (mainWindow) {
+      mainWindow.webContents.send('config-update', config);
+  }
+  
+  return true;
+});
+
+ipcMain.handle('remove-peer', async (event, ip) => {
+  const config = configManager.getConfig();
+  
+  if (!config.sync.peers) return false;
+
+  // Filtrar el peer a eliminar
+  const initialLength = config.sync.peers.length;
+  config.sync.peers = config.sync.peers.filter(p => p.ip !== ip);
+
+  if (config.sync.peers.length === initialLength) return false; // No se encontró
+
+  // Guardar configuración
+  configManager.saveConfig();
+
+  // Desconectar
+  if (syncClient) {
+      syncClient.disconnectFromPeer(ip);
+  }
+
+  // Enviar actualización a la UI
+  if (mainWindow) {
+      mainWindow.webContents.send('config-update', config);
+  }
+
+  return true;
+});
+
 ipcMain.handle('close-window', async () => {
   if (mainWindow) {
     mainWindow.hide();

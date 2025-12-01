@@ -13,6 +13,12 @@ async function initialize() {
   // Cargar estadísticas
   await updateStats();
   
+  // Cargar configuración inicial para peers
+  const config = await window.electronAPI.getConfig();
+  if (config && config.sync && config.sync.peers) {
+    renderPeers(config.sync.peers);
+  }
+
   // Configurar event listeners
   setupEventListeners();
   
@@ -23,6 +29,13 @@ async function initialize() {
     renderHistory();
     updateStats();
   });
+
+  // Escuchar actualizaciones de configuración
+  window.electronAPI.onConfigUpdate((config) => {
+      if (config.sync && config.sync.peers) {
+          renderPeers(config.sync.peers);
+      }
+  });
   
   console.log('Renderer initialized');
 }
@@ -31,6 +44,54 @@ async function initialize() {
  * Configura los event listeners
  */
 function setupEventListeners() {
+  // Modal de configuración
+  const modal = document.getElementById('settings-modal');
+  const btnSettings = document.getElementById('btn-settings');
+  const btnCloseSettings = document.getElementById('btn-close-settings');
+  
+  if (btnSettings && modal) {
+    btnSettings.addEventListener('click', () => {
+      modal.classList.remove('hidden');
+    });
+  }
+  
+  if (btnCloseSettings && modal) {
+    btnCloseSettings.addEventListener('click', () => {
+      modal.classList.add('hidden');
+    });
+  }
+  
+  // Cerrar modal al hacer click fuera
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.add('hidden');
+      }
+    });
+  }
+
+  // Lógica para agregar nuevo peer
+  const addBtn = document.getElementById('add-peer-btn');
+  const ipInput = document.getElementById('new-peer-ip');
+  const nameInput = document.getElementById('new-peer-name');
+
+  if (addBtn && ipInput) {
+      addBtn.addEventListener('click', async () => {
+          const ip = ipInput.value.trim();
+          const name = nameInput ? nameInput.value.trim() : '';
+          
+          if (!ip) return;
+
+          const success = await window.electronAPI.addPeer({ ip, name });
+          if (success) {
+              ipInput.value = ''; // Limpiar input
+              if (nameInput) nameInput.value = '';
+          } else {
+              alert('Esa IP ya existe en la lista');
+          }
+      });
+  }
+
   // Botones de ventana
   document.getElementById('btn-close').addEventListener('click', () => {
     window.electronAPI.closeWindow();
@@ -63,13 +124,67 @@ function setupEventListeners() {
   // Atajos de teclado
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
-      window.electronAPI.closeWindow();
+      // Si el modal está abierto, cerrarlo
+      if (modal && !modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+      } else {
+        window.electronAPI.closeWindow();
+      }
     } else if (event.key === 'F5' || (event.ctrlKey && event.key === 'r')) {
       event.preventDefault();
       loadHistory();
       updateStats();
     }
   });
+}
+
+/**
+ * Renderiza la lista de peers
+ */
+function renderPeers(peers) {
+    const container = document.getElementById('peers-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!peers || peers.length === 0) {
+        container.innerHTML = '<small style="color: var(--text-secondary); display: block; text-align: center; padding: 8px;">No hay dispositivos configurados</small>';
+        return;
+    }
+
+    peers.forEach(peer => {
+        const div = document.createElement('div');
+        div.className = 'peer-item';
+
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'peer-info';
+
+        const label = document.createElement('span');
+        label.className = 'peer-label';
+        label.textContent = peer.name ? `${peer.name} (${peer.ip})` : peer.ip;
+        label.title = peer.ip; // Tooltip con la IP completa
+
+        infoDiv.appendChild(label);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-remove-peer';
+        removeBtn.title = 'Eliminar dispositivo';
+        removeBtn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        `;
+        
+        removeBtn.onclick = async () => {
+            if (confirm(`¿Eliminar ${peer.name || peer.ip}?`)) {
+                await window.electronAPI.removePeer(peer.ip);
+            }
+        };
+
+        div.appendChild(infoDiv);
+        div.appendChild(removeBtn);
+        container.appendChild(div);
+    });
 }
 
 /**

@@ -160,3 +160,6 @@ Para verificar que la aplicación está corriendo:
 - Revisa los logs del sistema
 - Asegúrate de que Tailscale esté instalado y corriendo
 - Verifica la configuración en: `%APPDATA%\clipboard-manager\config.json`
+
+
+Hacer npm install --save-dev electron-packager  y npm run package para el .exe de windows 
