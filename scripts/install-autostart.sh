@@ -7,8 +7,8 @@ set -e
 
 echo "=== Instalación de Clipboard Manager en Autostart ==="
 
-# Obtener el directorio actual
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# Obtener el directorio del proyecto (parent del directorio scripts)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 AUTOSTART_DIR="$HOME/.config/autostart"
 DESKTOP_FILE="clipboard-manager.desktop"
 

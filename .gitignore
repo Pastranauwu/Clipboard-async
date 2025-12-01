@@ -12,6 +12,9 @@ out/
 # Configuration files (user-specific)
 config.json
 
+# Generated icons (regenerate with npm run generate-icons)
+# Both tray-icon.png and window-icon.png are included in repo for convenience
+
 # System files
 .DS_Store
 Thumbs.db

@@ -13,9 +13,6 @@ Gestor de portapapeles multiplataforma (Windows + Linux) con sincronización P2P
 - 🗑️ Eliminación individual de elementos del historial
 - 🎯 Ejecución en segundo plano con icono en bandeja del sistema
 - 🚀 Inicio automático con el sistema (Linux/Windows)
-- 🎯 Icono en bandeja del sistema (system tray)
-- 🗑️ Eliminación individual de elementos del historial
-- 🚀 Ejecución en segundo plano como servicio
 
 ## Instalación
 
@@ -90,7 +87,7 @@ Para que la aplicación inicie automáticamente con tu sesión:
 
 ```bash
 # Instalar en autostart
-./install-autostart.sh
+./scripts/install-autostart.sh
 ```
 
 La aplicación se iniciará automáticamente en el próximo login.
@@ -100,11 +97,11 @@ La aplicación se iniciará automáticamente en el próximo login.
 rm ~/.config/autostart/clipboard-manager.desktop
 ```
 
-**Nota:** También están disponibles los scripts `install-service.sh` y `uninstall-service.sh` para systemd, pero el método de autostart es más compatible con aplicaciones Electron
+**Nota:** También disponible `scripts/install-service.sh` para systemd, pero autostart es más compatible con aplicaciones Electron
 
 #### Windows
 
-Para Windows, consulta el archivo [windows-setup.md](./windows-setup.md) que incluye tres opciones:
+Para Windows, consulta el archivo [scripts/windows-setup.md](./scripts/windows-setup.md) que incluye tres opciones:
 1. **Task Scheduler** (Recomendado) - Ejecutar al inicio de sesión
 2. **Carpeta de inicio** - Método simple con script
 3. **NSSM** - Servicio completo de Windows
