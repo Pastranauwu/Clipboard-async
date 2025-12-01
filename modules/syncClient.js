@@ -59,7 +59,8 @@ class SyncClient extends EventEmitter {
         headers: {
           'X-Auth-Token': token,
           'X-Timestamp': timestamp.toString()
-        }
+        },
+        maxPayload: 100 * 1024 * 1024 // 100 MB para imágenes grandes
       });
 
       // Timeout de conexión
@@ -212,11 +213,18 @@ class SyncClient extends EventEmitter {
       timestamp: Date.now()
     });
 
+    console.log(`Sending ${item.type} to peers (${item.sizeBytes} bytes, ${message.length} chars)`);
+
     let sentCount = 0;
     this.connections.forEach((ws, peerIP) => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(message);
-        sentCount++;
+        try {
+          ws.send(message);
+          sentCount++;
+          console.log(`Sent to ${peerIP}: ${item.type}`);
+        } catch (error) {
+          console.error(`Failed to send to ${peerIP}:`, error.message);
+        }
       } else {
         console.warn(`Peer ${peerIP} not ready, state: ${ws.readyState}`);
       }

@@ -51,7 +51,8 @@ class SyncServer extends EventEmitter {
     try {
       this.server = new WebSocket.Server({ 
         host: host,
-        port: port 
+        port: port,
+        maxPayload: 100 * 1024 * 1024 // 100 MB para imágenes grandes
       });
 
       this.server.on('listening', () => {
@@ -188,6 +189,10 @@ class SyncServer extends EventEmitter {
     }
 
     console.log(`Received clipboard update from ${clientIP}: ${item.type} (${item.sizeBytes} bytes)`);
+    
+    if (item.type === 'image') {
+      console.log(`Image dimensions: ${item.width}x${item.height}`);
+    }
 
     // Emitir evento para que ClipboardManager lo procese
     this.emit('clipboard-received', item);
