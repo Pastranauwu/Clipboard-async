@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, Notification } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, Notification, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 
 const ConfigManager = require('./modules/config');
@@ -8,10 +8,67 @@ const SyncClient = require('./modules/syncClient');
 
 // Variables globales
 let mainWindow = null;
+let tray = null;
 let configManager = null;
 let clipboardManager = null;
 let syncServer = null;
 let syncClient = null;
+
+/**
+ * Crea el icono de la bandeja del sistema
+ */
+function createTray() {
+  // Crear icono de tray (usamos un icono simple)
+  const icon = nativeImage.createFromDataURL('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAA7AAAAOwBeShxvQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAKLSURBVFiFxZdPaBNBFMZ/b3Y3m2Q3TZo/mrSxaA8xFKQgCIIHD4J48OBBRPDgQRDBk+BBPHjy4EUQxIMgCB4EQfDgQbx4EAQFDx6k0Fob2rRJ0yTbZHd2dmdedtNuN9lNutV+sLCZ/fu99775Zt4uhBBYR5IkSZIkSZKknxJCYB0piiJJkiRJkiT9lBACGyCEwAYIIbABQghsgBACGyCEwAYIIbABQghsgBACGyCEwAYIIbABQghsgBACGyCEwAYIIbABQghsgBACGyCEwAYIIbABQghsgBACGyCEwAYIIbABQghsgBACGyCEwAYIIbABQghsQLskRVEkSZIkSZL+SgjRpv8KIVqEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEBBCQAgBIQSEEPgD9P6yz+vV5QMAAAAASUVORK5CYII=');
+  
+  tray = new Tray(icon);
+  
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Mostrar ventana',
+      click: () => {
+        toggleWindow();
+      }
+    },
+    {
+      label: 'Ver historial',
+      click: () => {
+        if (!mainWindow) {
+          createWindow();
+        } else {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Estadísticas',
+      click: async () => {
+        const stats = clipboardManager.getStats();
+        showNotification('Estadísticas', `Total: ${stats.total} | Texto: ${stats.text} | Imágenes: ${stats.images}`);
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Salir',
+      click: () => {
+        app.isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+  
+  tray.setToolTip('Clipboard Manager');
+  tray.setContextMenu(contextMenu);
+  
+  // Click en el icono abre/cierra la ventana
+  tray.on('click', () => {
+    toggleWindow();
+  });
+  
+  console.log('Tray icon created');
+}
 
 /**
  * Inicializa la aplicación
@@ -224,6 +281,10 @@ ipcMain.handle('clear-history', async () => {
   return true;
 });
 
+ipcMain.handle('remove-from-history', async (event, itemId) => {
+  return clipboardManager.removeFromHistory(itemId);
+});
+
 ipcMain.handle('get-stats', async () => {
   return {
     clipboard: clipboardManager.getStats(),
@@ -259,16 +320,13 @@ ipcMain.handle('minimize-window', async () => {
 
 app.whenReady().then(() => {
   initialize();
-  createWindow();
+  createTray();
   registerGlobalShortcut();
 });
 
 app.on('window-all-closed', () => {
-  // No cerrar la aplicación en macOS
-  if (process.platform !== 'darwin') {
-    // En Linux/Windows, mantener corriendo en background
-    // app.quit();
-  }
+  // No cerrar la aplicación, mantener en background
+  console.log('All windows closed, but app continues running in background');
 });
 
 app.on('activate', () => {

@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Limpiar historial
   clearHistory: () => ipcRenderer.invoke('clear-history'),
   
+  // Eliminar un ítem del historial
+  removeFromHistory: (itemId) => ipcRenderer.invoke('remove-from-history', itemId),
+  
   // Obtener estadísticas
   getStats: () => ipcRenderer.invoke('get-stats'),
   

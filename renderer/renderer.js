@@ -48,10 +48,15 @@ function setupEventListeners() {
   
   document.getElementById('btn-clear').addEventListener('click', async () => {
     if (confirm('¿Estás seguro de que quieres limpiar todo el historial?')) {
-      await window.electronAPI.clearHistory();
-      currentHistory = [];
-      renderHistory();
-      updateStats();
+      try {
+        await window.electronAPI.clearHistory();
+        // Esperar un momento para que el evento se propague
+        await new Promise(resolve => setTimeout(resolve, 100));
+        // Recargar el historial para asegurar que esté vacío
+        await loadHistory();
+      } catch (error) {
+        console.error('Error clearing history:', error);
+      }
     }
   });
   
@@ -183,10 +188,27 @@ function createHistoryItemElement(item) {
   content.appendChild(preview);
   content.appendChild(meta);
   
+  // Botón de eliminar
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'btn-delete';
+  deleteBtn.title = 'Eliminar';
+  deleteBtn.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="3 6 5 6 21 6"></polyline>
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    </svg>
+  `;
+  
+  deleteBtn.addEventListener('click', async (e) => {
+    e.stopPropagation(); // Evitar que se active el click del ítem
+    await handleItemDelete(item);
+  });
+  
   div.appendChild(icon);
   div.appendChild(content);
+  div.appendChild(deleteBtn);
   
-  // Click handler
+  // Click handler para copiar
   div.addEventListener('click', async () => {
     await handleItemClick(item);
   });
@@ -208,6 +230,23 @@ async function handleItemClick(item) {
     }
   } catch (error) {
     console.error('Error writing to clipboard:', error);
+  }
+}
+
+/**
+ * Maneja la eliminación de un ítem
+ */
+async function handleItemDelete(item) {
+  try {
+    const success = await window.electronAPI.removeFromHistory(item.id);
+    if (success) {
+      console.log('Item removed from history:', item.id);
+      // El historial se actualizará automáticamente via evento
+    } else {
+      console.error('Failed to remove item');
+    }
+  } catch (error) {
+    console.error('Error removing item:', error);
   }
 }
 

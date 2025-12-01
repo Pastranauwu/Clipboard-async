@@ -1,0 +1,21 @@
+[Unit]
+Description=Clipboard Manager - Gestor de portapapeles con sincronización P2P
+After=network.target
+
+[Service]
+Type=simple
+# Reemplaza con tu usuario
+User=%i
+# Configurar DISPLAY para aplicaciones gráficas (ajusta según tu configuración)
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=/home/%i/.Xauthority"
+Environment="DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%U/bus"
+# Ruta al ejecutable de Electron (ajusta según tu instalación)
+ExecStart=/usr/bin/npm start
+# Directorio de trabajo (ajusta según tu instalación)
+WorkingDirectory=/home/%i/workspace/clipboard-manager
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

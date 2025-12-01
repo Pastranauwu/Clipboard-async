@@ -92,6 +92,17 @@ El `sharedSecret` se genera automáticamente en la primera ejecución. **Debe se
 
 ## 🎯 Uso
 
+### Icono en Bandeja del Sistema
+
+La aplicación se ejecuta en segundo plano con un icono en la bandeja del sistema (system tray):
+
+- **Click izquierdo**: Abre/cierra la ventana flotante
+- **Click derecho**: Menú contextual con opciones:
+  - Mostrar ventana
+  - Ver historial
+  - Estadísticas
+  - Salir
+
 ### Atajo global
 
 Por defecto: **Ctrl+Alt+V** (Windows/Linux) o **Cmd+Alt+V** (macOS)
@@ -115,6 +126,13 @@ La ventana muestra:
 3. El ítem se copiará al portapapeles automáticamente
 4. La ventana se cerrará
 5. Pega normalmente con **Ctrl+V** donde lo necesites
+
+### Eliminar un ítem individual
+
+1. Abre la ventana con el atajo global
+2. Pasa el mouse sobre el ítem que deseas eliminar
+3. Aparecerá un botón de eliminar (🗑️) en la esquina superior derecha
+4. Haz clic en el botón para eliminar solo ese elemento
 
 ### Identificar ítems remotos
 
@@ -253,34 +271,43 @@ Cada dispositivo:
 
 ### Linux (systemd)
 
-Crea `~/.config/systemd/user/clipboard-manager.service`:
+**Instalación rápida:**
 
-```ini
-[Unit]
-Description=Clipboard Manager
-After=network.target
+```bash
+# Instalar como servicio de usuario
+./install-service.sh
 
-[Service]
-Type=simple
-ExecStart=/usr/bin/npm start
-WorkingDirectory=/ruta/a/clipboard-manager
-Restart=on-failure
-
-[Install]
-WantedBy=default.target
+# Habilitar inicio automático (incluso sin login)
+loginctl enable-linger $USER
 ```
 
-Habilita el servicio:
+**Comandos útiles:**
+
 ```bash
-systemctl --user enable clipboard-manager.service
-systemctl --user start clipboard-manager.service
+# Ver estado
+systemctl --user status clipboard-manager@$USER.service
+
+# Ver logs en tiempo real
+journalctl --user -u clipboard-manager@$USER.service -f
+
+# Reiniciar
+systemctl --user restart clipboard-manager@$USER.service
+
+# Detener
+systemctl --user stop clipboard-manager@$USER.service
+
+# Desinstalar
+./uninstall-service.sh
 ```
 
 ### Windows
 
-1. Presiona `Win+R` y escribe `shell:startup`
-2. Crea un acceso directo a `npm start` en el directorio del proyecto
-3. La aplicación se iniciará automáticamente al iniciar sesión
+Consulta el archivo [windows-setup.md](./windows-setup.md) para instrucciones detalladas.
+
+**Opciones disponibles:**
+1. **Task Scheduler** (Recomendado) - Ejecutar al inicio de sesión
+2. **Carpeta de inicio** - Método simple con script
+3. **NSSM** - Servicio completo de Windows
 
 ## 📝 Comandos útiles
 

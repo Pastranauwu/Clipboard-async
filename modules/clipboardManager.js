@@ -48,6 +48,18 @@ class CircularBuffer {
   }
 
   /**
+   * Elimina un ítem por ID
+   */
+  removeById(id) {
+    const index = this.buffer.findIndex(item => item.id === id);
+    if (index !== -1) {
+      this.buffer.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Limpia el buffer
    */
   clear() {
@@ -219,12 +231,12 @@ class ClipboardManager extends EventEmitter {
     this.history.add(item);
     console.log(`Added ${item.type} to history (${item.sizeBytes} bytes)`);
     
-    // Emitir evento para sincronización
+    // Emitir evento para sincronización (solo si no es remoto)
     if (!item.fromRemote) {
       this.emit('clipboard-changed', item);
     }
     
-    // Emitir evento para UI
+    // Siempre emitir evento para UI
     this.emit('history-updated', this.history.getAll());
   }
 
@@ -291,9 +303,41 @@ class ClipboardManager extends EventEmitter {
    */
   clearHistory() {
     this.history.clear();
-    this.lastContentHash = null;
+    // Actualizar el hash del último contenido para evitar que se vuelva a agregar
+    // lo que está actualmente en el portapapeles
+    const clipboard = require('electron').clipboard;
+    const formats = clipboard.availableFormats();
+    
+    if (formats.includes('text/plain')) {
+      const text = clipboard.readText();
+      if (text) {
+        this.lastContentHash = this.calculateHash(text);
+      }
+    } else if (formats.some(f => f.includes('image'))) {
+      const image = clipboard.readImage();
+      if (!image.isEmpty()) {
+        const pngBuffer = image.toPNG();
+        this.lastContentHash = this.calculateHash(pngBuffer);
+      }
+    } else {
+      this.lastContentHash = null;
+    }
+    
     this.emit('history-updated', []);
     console.log('History cleared');
+  }
+
+  /**
+   * Elimina un ítem específico del historial
+   */
+  removeFromHistory(itemId) {
+    const removed = this.history.removeById(itemId);
+    if (removed) {
+      this.emit('history-updated', this.history.getAll());
+      console.log('Item removed from history:', itemId);
+      return true;
+    }
+    return false;
   }
 
   /**
