@@ -178,34 +178,50 @@ class ClipboardManager extends EventEmitter {
     
     if (image.isEmpty()) return;
 
-    // Convertir a JPEG con compresión (calidad 70%)
-    const jpegBuffer = image.toJPEG(70);
-    const contentHash = this.calculateHash(jpegBuffer);
+    let buffer;
+    let mimeType;
+
+    try {
+      // Intentar convertir a JPEG con compresión (calidad 70%)
+      buffer = image.toJPEG(70);
+      mimeType = 'image/jpeg';
+    } catch (error) {
+      console.error('Error converting to JPEG, falling back to PNG:', error);
+      try {
+        buffer = image.toPNG();
+        mimeType = 'image/png';
+      } catch (pngError) {
+        console.error('Error converting to PNG:', pngError);
+        return;
+      }
+    }
+
+    const contentHash = this.calculateHash(buffer);
 
     if (contentHash === this.lastContentHash) return;
 
     this.lastContentHash = contentHash;
 
     // Verificar tamaño
-    if (jpegBuffer.length > this.config.clipboard.maxImageSize) {
-      console.warn(`Image too large: ${jpegBuffer.length} bytes, max: ${this.config.clipboard.maxImageSize}`);
-      this.emit('image-too-large', jpegBuffer.length);
+    if (buffer.length > this.config.clipboard.maxImageSize) {
+      console.warn(`Image too large: ${buffer.length} bytes, max: ${this.config.clipboard.maxImageSize}`);
+      this.emit('image-too-large', buffer.length);
       return;
     }
 
     // Convertir a base64
-    const base64 = jpegBuffer.toString('base64');
-    const dataURL = `data:image/jpeg;base64,${base64}`;
+    const base64 = buffer.toString('base64');
+    const dataURL = `data:${mimeType};base64,${base64}`;
 
     const dimensions = image.getSize();
 
     const item = {
       id: uuidv4(),
       type: 'image',
-      mimeType: 'image/jpeg',
+      mimeType: mimeType,
       data: dataURL,
       contentHash: contentHash,
-      sizeBytes: jpegBuffer.length,
+      sizeBytes: buffer.length,
       width: dimensions.width,
       height: dimensions.height,
       timestamp: Date.now(),
@@ -246,7 +262,7 @@ class ClipboardManager extends EventEmitter {
   addRemoteItem(item) {
     // Validar tamaño
     if (item.sizeBytes > this.config.clipboard.maxImageSize) {
-      console.warn('Remote item too large, discarding');
+      console.warn(`Remote item too large (${item.sizeBytes} bytes), discarding. Max: ${this.config.clipboard.maxImageSize}`);
       return false;
     }
 

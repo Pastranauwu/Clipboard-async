@@ -202,15 +202,30 @@ class SyncServer extends EventEmitter {
    * Valida un ítem de portapapeles
    */
   validateClipboardItem(item) {
-    if (!item || typeof item !== 'object') return false;
-    if (!item.id || !item.type || !item.timestamp) return false;
-    if (!['text', 'image'].includes(item.type)) return false;
-    if (typeof item.sizeBytes !== 'number') return false;
-    if (item.sizeBytes > this.config.clipboard.maxImageSize) {
-      console.warn(`Item too large: ${item.sizeBytes} bytes`);
+    if (!item || typeof item !== 'object') {
+      console.warn('Invalid item: not an object');
       return false;
     }
-    if (!item.data) return false;
+    if (!item.id || !item.type || !item.timestamp) {
+      console.warn('Invalid item: missing required fields (id, type, timestamp)');
+      return false;
+    }
+    if (!['text', 'image'].includes(item.type)) {
+      console.warn(`Invalid item type: ${item.type}`);
+      return false;
+    }
+    if (typeof item.sizeBytes !== 'number') {
+      console.warn('Invalid item: sizeBytes is not a number');
+      return false;
+    }
+    if (item.sizeBytes > this.config.clipboard.maxImageSize) {
+      console.warn(`Item too large: ${item.sizeBytes} bytes (max: ${this.config.clipboard.maxImageSize})`);
+      return false;
+    }
+    if (!item.data) {
+      console.warn('Invalid item: missing data');
+      return false;
+    }
     
     return true;
   }
